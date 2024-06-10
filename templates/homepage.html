@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+</head>
+<body>
+    <h2>Welcome, {{ username }}!</h2>
+    <a href="/logout">Logout</a>
+    
+    <h3>Search for a Word:</h3>
+    <form action="/translate" method="GET">
+        <label for="word">Word:</label>
+        <input type="text" id="word" name="word" required>
+        <label for="language">Language:</label>
+        <input type="text" id="language" name="language" required>
+        <input type="submit" value="Search">
+    </form>
+    
+    {% if word_data %}
+    <h3>Word Meaning:</h3>
+    <p>{{ word_data }}</p>
+    {% endif %}
+</body>
+</html>
