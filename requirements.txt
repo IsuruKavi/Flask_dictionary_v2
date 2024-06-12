@@ -1,0 +1,7 @@
+Flask
+flask-pymongo
+requests
+pycountry
+translate
+pymongo
+pymongo[srv]

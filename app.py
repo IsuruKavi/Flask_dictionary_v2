@@ -6,13 +6,25 @@ import pycountry
 from translate import Translator
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key"  # Required for session management
+app.secret_key = "123"  # Required for session management
 
 # MongoDB Configuration
-app.config["MONGO_URI"] = "mongodb://localhost:27017/mydatabase"  # MongoDB URI
-mongo = PyMongo(app)
-user_collection = mongo.db.users  # MongoDB collection for storing user data
-word_collection = mongo.db.words  # MongoDB collection for storing words
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+uri = "mongodb+srv://isurulakshan870:eos3uJaVw4P3gOfn@cluster0.alhstcm.mongodb.net/myDatabase?retryWrites=true&w=majority&appName=Cluster0"
+# Create a new client and connect to the server
+client = MongoClient(uri, server_api=ServerApi('1'))
+# Send a ping to confirm a successful connection
+try:
+    client.admin.command('ping')
+    print("Pinged your deployment. You successfully connected to MongoDB!")
+except Exception as e:
+    print(e)
+
+db = client.get_database('myDatabase')  
+user_collection = db.users  # MongoDB collection for storing user data
+word_collection = db.words  # MongoDB collection for storing words
+history_collection=db.history # MongoDB colleciton for storing the hisrory of user
 
 
 WORDS_API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/"
@@ -75,7 +87,7 @@ def register():
             return 'Username already exists!'
 
         # Insert new user into MongoDB
-        user_collection.insert_one({'username': username, 'password': password,'search_history': []})
+        user_collection.insert_one({'username': username, 'password': password})
         session['username'] = username
         return redirect(url_for('index'))
 
@@ -95,7 +107,9 @@ def get_meaning_of_word():
     if not (word and language):
         return jsonify({'error': 'Missing required query parameters'}), 400
     
-    # Check if the word is already in the database
+    entered_word_and_languag={"username":session['username'],"word":word,"language":language}
+    history_collection.insert_one(entered_word_and_languag)
+    # Check if he word is already in the database
     word_document = word_collection.find_one({"word": word})
     if word_document:
         print("Found in database")
