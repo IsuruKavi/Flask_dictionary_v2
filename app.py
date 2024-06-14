@@ -160,7 +160,7 @@ def get_meaning_of_word():
                 "english": english_meanings,
                 "secondaryLanguage": {
                     "info": [
-                        {'meaning':translator.translate(word) },  
+                        {'meaning':translator.translate(word) },{'definition': translated_definition}
                     ],
                     "LanguageIsoCode": language_code,
                     "language": language
