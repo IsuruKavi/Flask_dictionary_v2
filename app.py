@@ -51,6 +51,20 @@ def translate_first_definition(definition, language_code):
     translated_definition = translator.translate(definition)
     return translated_definition
 
+def get_history():
+    username = session['username']
+    
+    # Retrieve all entries for the logged-in user
+    user_history = history_collection.find({"username": username})
+    
+    history_list = []
+    for entry in user_history:
+        history_list.append({
+            "word": entry["word"],
+            "language": entry["language"]
+        })
+    
+    return history_list 
 @app.route('/')
 def index():
     if 'username' in session:
@@ -108,8 +122,10 @@ def get_meaning_of_word():
     if not (word and language):
         return jsonify({'error': 'Missing required query parameters'}), 400
     
+    
     entered_word_and_languag={"username":session['username'],"word":word,"language":language}
     history_collection.insert_one(entered_word_and_languag)
+    history_list=get_history()   
     # Check if he word is already in the database
     word_document = word_collection.find_one({"word": word})
     if word_document:
@@ -117,6 +133,7 @@ def get_meaning_of_word():
         english_meanings = word_document['english_meanings']
     else:
         print("Not found in database")
+        
         language_code = get_language_code(language)
         if not language_code:
             return jsonify({'error': f'Language "{language}" is not recognized'}), 400
@@ -150,22 +167,24 @@ def get_meaning_of_word():
             word_collection.insert_one(data_to_database)
             
              # Update search history for the user
-            user_collection.update_one(
-                {"username": session['username']},
-                {"$push": {"search_history": {"word": word,"searched_language": language}}}
-            )
+            # user_collection.update_one(
+            #     {"username": session['username']},
+            #     {"$push": {"search_history": {"word": word,"searched_language": language}}}
+            # )
             # translate the input word
+            
             translator= Translator(to_lang=language_code)
             response_data = {
                 "word": word,
                 "english": english_meanings,
-                "secondaryLanguage": {
+                "secondary_language": {
                     "info": [
                         {'meaning':translator.translate(word) },{'definition': translated_definition}
                     ],
-                    "LanguageIsoCode": language_code,
+                    "language_iso_code": language_code,
                     "language": language
                 }
+                ,"history_list":history_list
             }
             
         except Exception as e:
@@ -188,14 +207,15 @@ def get_meaning_of_word():
             return jsonify({'error': f'Language "{language}" is not recognized'}), 400
         
         # Update search history for the user
-        user_collection.update_one(
-            {"username": session['username']},
-            {"$push": {"search_history": {"word": word,"searched_language": language}}}
-            )
+        # user_collection.update_one(
+        #     {"username": session['username']},
+        #     {"$push": {"search_history": {"word": word,"searched_language": language}}}
+        #     )
         
         # Translate the first definition
         translated_definition = translate_first_definition(english_meanings[0]['definitions'][0], language_code)
         translator= Translator(to_lang=language_code)
+        
         response_data = {
             "word": word,
             "english": english_meanings,
@@ -204,9 +224,10 @@ def get_meaning_of_word():
                     {'meaning':translator.translate(word)},  # Translator.translate(word) removed as it translates the word itself, not its meaning
                     {'definition': translated_definition}
                 ],
-                "LanguageIsoCode": language_code,
+                "language_iso_ode": language_code,
                 "language": language
             }
+            ,"history_list":history_list
         }
         return  json.dumps(response_data,ensure_ascii=False), 200
     except Exception as e:
