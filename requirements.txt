@@ -5,3 +5,4 @@ pycountry
 translate
 pymongo
 pymongo[srv]
+json

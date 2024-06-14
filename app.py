@@ -4,6 +4,7 @@ import hashlib
 import requests
 import pycountry
 from translate import Translator
+import json
 
 app = Flask(__name__)
 app.secret_key = "123"  # Required for session management
@@ -166,11 +167,12 @@ def get_meaning_of_word():
                     "language": language
                 }
             }
+            
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
         if word.isalpha():
-            return jsonify(response_data), 200
+            return json.dumps(response_data,ensure_ascii=False), 200
         else:
             return jsonify({"error": "Enter a valid word"}), 400
 
@@ -206,7 +208,7 @@ def get_meaning_of_word():
                 "language": language
             }
         }
-        return jsonify(response_data), 200
+        return  json.dumps(response_data,ensure_ascii=False), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
