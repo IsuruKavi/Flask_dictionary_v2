@@ -26,6 +26,7 @@ db = client.get_database('myDatabase')
 user_collection = db.users  # MongoDB collection for storing user data
 word_collection = db.words  # MongoDB collection for storing words
 history_collection=db.history # MongoDB colleciton for storing the hisrory of user
+second_language_collection=db.second_language #MongoDB collection for storing user second language
 
 
 WORDS_API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/"
@@ -68,7 +69,15 @@ def get_history():
 @app.route('/')
 def index():
     if 'username' in session:
-        return render_template('homepage.html', username=session['username'])
+        username = session['username']
+        # Retrieve the second language for the logged-in user
+        second_language_doc = second_language_collection.find_one({"username": username})
+        if second_language_doc:
+            second_language = second_language_doc['second_language']
+            print(second_language)
+        else:
+            second_language = None  # Handle case where no second language is found
+        return render_template('homepage.html', username=username,second_language=second_language)
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -94,6 +103,8 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = hashlib.sha256(request.form['password'].encode()).hexdigest()  # Hash the password
+        second_language=request.form['second_language']
+        print(second_language)
 
         # Check if username already exists
         existing_user = user_collection.find_one({'username': username})
@@ -103,6 +114,7 @@ def register():
 
         # Insert new user into MongoDB
         user_collection.insert_one({'username': username, 'password': password})
+        second_language_collection.insert_one({'username':username,'second_language':second_language})
         session['username'] = username
         return redirect(url_for('index'))
 
