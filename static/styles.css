@@ -2,6 +2,8 @@ body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
 }
 
 .container {
@@ -10,24 +12,54 @@ body {
     padding: 20px;
     border: 1px solid #ccc;
     border-radius: 5px;
-    background-color: #f9f9f9;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    position: relative; /* Ensure container is relative */
+}
+
+h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #007bff;
 }
 
 .form-group {
     margin-bottom: 20px;
+    position: relative; /* Ensure form-group is relative */
 }
 
 .form-group label {
     display: block;
     margin-bottom: 5px;
+    font-weight: bold;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
     width: 100%;
     padding: 10px;
     font-size: 16px;
     border: 1px solid #ccc;
     border-radius: 5px;
+    box-sizing: border-box;
+    position: relative;
+     /* Ensure select is above other elements */
+}
+
+.form-group select {
+    appearance: none; /* Remove default styles */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="5"><path fill="none" stroke="%23333" stroke-width="1.1" d="M0 0l2 2 2-2"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 8px 10px;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #007bff;
+    outline: none;
 }
 
 .btn {
@@ -37,14 +69,50 @@ body {
     color: #fff;
     text-decoration: none;
     border-radius: 5px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 16px;
+    border: none;
 }
 
 .btn:hover {
     background-color: #0056b3;
 }
 
+.error {
+    color: #ff0000;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
 .logout-link {
     display: block;
     margin-top: 20px;
     text-align: center;
+}
+
+a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+ul li {
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+ul li:nth-child(even) {
+    background-color: #e9e9e9;
 }

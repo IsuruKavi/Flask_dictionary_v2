@@ -59,10 +59,10 @@ def get_history():
     user_history = history_collection.find({"username": username})
     
     history_list = []
-    for entry in user_history:
+    for index,entry in user_history:
         history_list.append({
-            "word": entry["word"],
-            "language": entry["language"]
+            "index":index,"entered_words": entry["word"],
+         
         })
     
     return history_list 
@@ -125,6 +125,11 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
 
+@app.route('/history')
+def get_user_history():
+    history_list=get_history()
+    return  json.dumps(history_list,ensure_ascii=False), 200
+
 @app.route('/translate', methods=['GET'])
 def get_meaning_of_word():
     # Endpoint to get the meaning of a word in a specified language
@@ -132,12 +137,7 @@ def get_meaning_of_word():
     language = request.args.get('language')
     
     if not (word and language):
-        return jsonify({'error': 'Missing required query parameters'}), 400
-    
-    
-    entered_word_and_languag={"username":session['username'],"word":word,"language":language}
-    history_collection.insert_one(entered_word_and_languag)
-    history_list=get_history()   
+        return jsonify({'error': 'Missing required query parameters'}), 400   
     # Check if he word is already in the database
     word_document = word_collection.find_one({"word": word})
     if word_document:
@@ -196,8 +196,10 @@ def get_meaning_of_word():
                     "language_iso_code": language_code,
                     "language": language
                 }
-                ,"history_list":history_list
+               
             }
+            entered_words={"username":session['username'],"word":response_data}
+            history_collection.insert_one(entered_words)
             
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -239,8 +241,11 @@ def get_meaning_of_word():
                 "language_iso_ode": language_code,
                 "language": language
             }
-            ,"history_list":history_list
+           
         }
+        entered_words={"username":session['username'],"word":response_data}
+        history_collection.insert_one(entered_words)
+            
         return  json.dumps(response_data,ensure_ascii=False), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
