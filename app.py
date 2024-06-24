@@ -4,30 +4,25 @@ import hashlib
 import requests
 import pycountry
 from translate import Translator
+from flasgger import Swagger
 import json
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
 
 app = Flask(__name__)
 app.secret_key = "123"  # Required for session management
 
+# Initialize Swagger
+swagger = Swagger(app)
+
 # MongoDB Configuration
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
 uri = "mongodb+srv://isurulakshan870:eos3uJaVw4P3gOfn@cluster0.alhstcm.mongodb.net/myDatabase?retryWrites=true&w=majority&appName=Cluster0"
-# Create a new client and connect to the server
 client = MongoClient(uri, server_api=ServerApi('1'))
-# Send a ping to confirm a successful connection
-try:
-    client.admin.command('ping')
-    print("Pinged your deployment. You successfully connected to MongoDB!")
-except Exception as e:
-    print(e)
-
-db = client.get_database('myDatabase')  
-user_collection = db.users  # MongoDB collection for storing user data
-word_collection = db.words  # MongoDB collection for storing words
-history_collection=db.history # MongoDB colleciton for storing the hisrory of user
-second_language_collection=db.second_language #MongoDB collection for storing user second language
-
+db = client.get_database('myDatabase')
+user_collection = db.users
+word_collection = db.words
+history_collection = db.history
+second_language_collection = db.second_language
 
 WORDS_API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/"
 
@@ -54,39 +49,53 @@ def translate_first_definition(definition, language_code):
 
 def get_history():
     username = session['username']
-    
-    # Retrieve all entries for the logged-in user
     user_history = history_collection.find({"username": username})
-    
     history_list = []
-    for index,entry in user_history:
+    for index, entry in enumerate(user_history):
         history_list.append({
-            "index":index,"entered_words": entry["word"],
-         
+            "index": index,
+            "entered_words": entry["word"]
         })
-    
-    return history_list 
+    return history_list
+
 @app.route('/')
 def index():
+    """
+    Homepage endpoint.
+
+    ---
+    responses:
+      302:
+        description: Redirect to login page if not logged in
+      200:
+        description: Homepage for logged-in users
+    """
     if 'username' in session:
         username = session['username']
-        # Retrieve the second language for the logged-in user
         second_language_doc = second_language_collection.find_one({"username": username})
         if second_language_doc:
             second_language = second_language_doc['second_language']
-            print(second_language)
         else:
-            second_language = None  # Handle case where no second language is found
-        return render_template('homepage.html', username=username,second_language=second_language)
+            second_language = None
+        return render_template('homepage.html', username=username, second_language=second_language)
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """
+    Login endpoint.
+
+    ---
+    responses:
+      200:
+        description: Successfully logged in
+      401:
+        description: Invalid username or password
+    """
     if request.method == 'POST':
         username = request.form['username']
-        password = hashlib.sha256(request.form['password'].encode()).hexdigest()  # Hash the password
+        password = hashlib.sha256(request.form['password'].encode()).hexdigest()
 
-        # Query MongoDB for user
         user_data = user_collection.find_one({'username': username, 'password': password})
 
         if user_data:
@@ -100,21 +109,30 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """
+    Registration endpoint.
+
+    ---
+    responses:
+      302:
+        description: Redirect to index page upon successful registration
+      200:
+        description: Register a new user
+      409:
+        description: Username already exists
+    """
     if request.method == 'POST':
         username = request.form['username']
-        password = hashlib.sha256(request.form['password'].encode()).hexdigest()  # Hash the password
-        second_language=request.form['second_language']
-        print(second_language)
+        password = hashlib.sha256(request.form['password'].encode()).hexdigest()
+        second_language = request.form['second_language']
 
-        # Check if username already exists
         existing_user = user_collection.find_one({'username': username})
 
         if existing_user:
             return 'Username already exists!'
 
-        # Insert new user into MongoDB
         user_collection.insert_one({'username': username, 'password': password})
-        second_language_collection.insert_one({'username':username,'second_language':second_language})
+        second_language_collection.insert_one({'username': username, 'second_language': second_language})
         session['username'] = username
         return redirect(url_for('index'))
 
@@ -122,30 +140,67 @@ def register():
 
 @app.route('/logout')
 def logout():
+    """
+    Logout endpoint.
+
+    ---
+    responses:
+      302:
+        description: Redirect to login page upon successful logout
+    """
     session.pop('username', None)
     return redirect(url_for('login'))
 
-@app.route('/history')
+@app.route('/history', methods=['GET'])
 def get_user_history():
-    history_list=get_history()
-    return  json.dumps(history_list,ensure_ascii=False), 200
+    """
+    Retrieve user history endpoint.
+
+    ---
+    responses:
+      200:
+        description: JSON array of user's search history
+    """
+    history_list = get_history()
+    return jsonify(history_list), 200
 
 @app.route('/translate', methods=['GET'])
 def get_meaning_of_word():
-    # Endpoint to get the meaning of a word in a specified language
+    """
+    Translate word endpoint.
+
+    ---
+    parameters:
+      - name: word
+        in: query
+        type: string
+        required: true
+        description: The word to translate
+      - name: language
+        in: query
+        type: string
+        required: true
+        description: The language to translate to (e.g., 'French', 'German')
+
+    responses:
+      200:
+        description: Translation successful
+      400:
+        description: Bad request
+      404:
+        description: No definitions found
+    """
     word = request.args.get('word')
     language = request.args.get('language')
-    
+
     if not (word and language):
-        return jsonify({'error': 'Missing required query parameters'}), 400   
-    # Check if he word is already in the database
+        return jsonify({'error': 'Missing required query parameters'}), 400
+
     word_document = word_collection.find_one({"word": word})
+
     if word_document:
-        print("Found in database")
         english_meanings = word_document['english_meanings']
     else:
-        print("Not found in database")
-        
         language_code = get_language_code(language)
         if not language_code:
             return jsonify({'error': f'Language "{language}" is not recognized'}), 400
@@ -170,85 +225,66 @@ def get_meaning_of_word():
                 english_similar_words.extend(synonyms)
 
             english_meanings.append({"similarWords": english_similar_words})
-            
-            # Translate the first definition
+
             translated_definition = translate_first_definition(definitions[0], language_code)
-            
-            # Insert data into MongoDB
+
             data_to_database = {"word": word, "english_meanings": english_meanings}
             word_collection.insert_one(data_to_database)
-            
-             # Update search history for the user
-            # user_collection.update_one(
-            #     {"username": session['username']},
-            #     {"$push": {"search_history": {"word": word,"searched_language": language}}}
-            # )
-            # translate the input word
-            
-            translator= Translator(to_lang=language_code)
+
+            translator = Translator(to_lang=language_code)
             response_data = {
                 "word": word,
                 "english": english_meanings,
-                "secondary_language": {
+                "secondaryLanguage": {
                     "info": [
-                        {'meaning':translator.translate(word) },{'definition': translated_definition}
+                        {'meaning': translator.translate(word)},
+                        {'definition': translated_definition}
                     ],
                     "language_iso_code": language_code,
                     "language": language
                 }
-               
             }
-            entered_words={"username":session['username'],"word":response_data}
+            entered_words = {"username": session['username'], "word": response_data}
             history_collection.insert_one(entered_words)
-            
+
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-        if word.isalpha():
-            return json.dumps(response_data,ensure_ascii=False), 200
-        else:
-            return jsonify({"error": "Enter a valid word"}), 400
+        return jsonify(response_data), 200
 
-    # If the word is found in the database, translate its meanings
     try:
         if 'english_meanings' in word_document:
             english_meanings = word_document['english_meanings']
         else:
             return jsonify({"error": "English meanings not found for the word"}), 404
-        
+
         language_code = get_language_code(language)
         if not language_code:
             return jsonify({'error': f'Language "{language}" is not recognized'}), 400
-        
-        # Update search history for the user
-        # user_collection.update_one(
-        #     {"username": session['username']},
-        #     {"$push": {"search_history": {"word": word,"searched_language": language}}}
-        #     )
-        
-        # Translate the first definition
+
         translated_definition = translate_first_definition(english_meanings[0]['definitions'][0], language_code)
-        translator= Translator(to_lang=language_code)
-        
+
+        translator = Translator(to_lang=language_code)
         response_data = {
             "word": word,
             "english": english_meanings,
             "secondaryLanguage": {
                 "info": [
-                    {'meaning':translator.translate(word)},  # Translator.translate(word) removed as it translates the word itself, not its meaning
+                    {'meaning': translator.translate(word)},
                     {'definition': translated_definition}
                 ],
-                "language_iso_ode": language_code,
+                "language_iso_code": language_code,
                 "language": language
             }
-           
         }
-        entered_words={"username":session['username'],"word":response_data}
+        entered_words = {"username": session['username'], "word": response_data}
         history_collection.insert_one(entered_words)
-            
-        return  json.dumps(response_data,ensure_ascii=False), 200
+
+        return jsonify(response_data), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
