@@ -162,7 +162,7 @@ def get_user_history():
         description: JSON array of user's search history
     """
     history_list = get_history()
-    return jsonify(history_list), 200
+    return json.dumps(history_list,ensure_ascii=False),200
 
 @app.route('/translate', methods=['GET'])
 def get_meaning_of_word():
@@ -250,7 +250,7 @@ def get_meaning_of_word():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-        return jsonify(response_data), 200
+        return json.dumps(response_data,ensure_ascii=False),200
 
     try:
         if 'english_meanings' in word_document:
@@ -280,11 +280,10 @@ def get_meaning_of_word():
         entered_words = {"username": session['username'], "word": response_data}
         history_collection.insert_one(entered_words)
 
-        return jsonify(response_data), 200
+        return json.dumps(response_data,ensure_ascii=False), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-
